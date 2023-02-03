@@ -1,0 +1,38 @@
+﻿<Window x:Class="Parking.Forms.HelpWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Parking.Forms"
+        mc:Ignorable="d"
+        Title="Подсказки по работе с формулами" Height="413" Width="623"
+        Background="DarkGray">
+    <Grid>
+        <Label 
+            Margin="10">
+            <TextBlock FontSize="16" TextWrapping="Wrap">
+                Для формул можно использовать следующее кодовые слова:<LineBreak/>
+                <Bold>КолЖит</Bold> - используется вместо кол-ва жителей<LineBreak/>
+                <Bold>КолКварт</Bold> - используется вместо кол-ва квартир<LineBreak/>
+                <Bold>ПлКварт</Bold> - используется вместо площади квартир<LineBreak/>
+                <Bold>ПлОфис</Bold> - используется вместо площади офисов<LineBreak/>
+                <Bold>ПлМагаз</Bold> - используется вместо площади магазинов<LineBreak/>
+                <Bold>ПостСтНаУч</Bold> - используется вместо кол-ва парковок для постоянного<LineBreak/>
+                хранения размещенных на участке<LineBreak/>
+                <Bold>ТребПостСт</Bold> - используется вместо кол-ва парковок для постоянного<LineBreak/>
+                хранения требуемых по расчету для дома<LineBreak/>
+                Операторы, которые можно использовать в формулах:<Bold>+ , - , * , / , ( ) </Bold><LineBreak/>
+                <Bold>Условные конструкции</Bold> - конструкции со следущим синтаксисом:<LineBreak/>
+                <Bold>IIF( условие, выполняется, не выполняется )</Bold><LineBreak/>
+                В условиях можно использовать:<Bold> = , &gt; , &lt; , &gt;= , &lt;=</Bold> <LineBreak/>
+                Пример: <Bold>IFF(ПостСтНаУч/ТребПостСт>=0.4, 0.125*КолКварт, 0.25*КолКварт)</Bold><LineBreak/>
+                Это формула будет выдавать результат 12,5% от кол-ва квартир если на участке расположено 40% и более мест для постоянного хранения и 25% если меньше.
+            </TextBlock>
+        </Label>
+        <Button x:Name="closeHelpButton"
+            Click="closeHelpButton_Click"
+            Content="Закрыть"
+            Width="80"
+            Height="30" Margin="533,10,10,357"/>
+    </Grid>
+</Window>

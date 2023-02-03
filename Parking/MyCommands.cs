@@ -1,12 +1,6 @@
-﻿using Autodesk.AutoCAD.ApplicationServices;
-using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.EditorInput;
-using Autodesk.AutoCAD.Geometry;
-using Autodesk.AutoCAD.Runtime;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Autodesk.AutoCAD.Runtime;
+
+using Parking.Forms;
 
 [assembly: CommandClass(typeof(Parking.MyCommands))]
 
@@ -14,10 +8,11 @@ namespace Parking
 {
     internal class MyCommands
     {
-        [CommandMethod("Command")]
-        static public void Command()
+        [CommandMethod("ParkNew")]
+        static public void ParkNew()
         {
-
+            MainWindow mainWindow = new MainWindow();
+            mainWindow.Show();
         }
     }
 }
