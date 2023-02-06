@@ -173,32 +173,9 @@ internal static class DataProcessing
         var buildingPlotNumbers = zoneBorders[0].OrderBy(x => x.Name).Select(x => x.PlotNumber).ToList();
         var exParking = GetExParking(parkingBlocks);
         //Getting buildings
-        var buildings = new List<ApartmentBuildingModel>();
-        var buildingBlockList = DataImport.GetAllElementsOfTypeOnLayer<BlockReference>(Variables.apartmentsBuildingsLayer);
-        var buildingDPList = DataImport.GetDynamicProperties(buildingBlockList);
-        for (var j = 0; j < buildingBlockList.Count; j++)
-        {
-            string[] dynBlockPropValues = new string[9];
-            for (int i = 0; i < dynBlockPropValues.Length; i++)
-            {
-                dynBlockPropValues[i] = buildingDPList[j][i].Value.ToString();
-            }
-            Point3d midPoint = GetCenterOfABlock(buildingBlockList[j]);
-            buildings.Add(new ApartmentBuildingModel(city, dynBlockPropValues, zoneBorders[0].Where(x => x.Name == dynBlockPropValues[1]).First(), exParking.Where(x => x.Name == dynBlockPropValues[1]).First(), midPoint));
-        }
+        var buildings = DataImport.GetApartmentBuildings(city, zoneBorders[0], exParking);
         //Getting parking buildings
-        var parkingBuildings = new List<ParkingBuildingModel>();
-        foreach (var br in DataImport.GetAllElementsOfTypeOnLayer<BlockReference>(Variables.parkingBuildingsLayer))
-        {
-            string[] dynBlockPropValues = new string[8];
-            DynamicBlockReferencePropertyCollection pc = br.DynamicBlockReferencePropertyCollection;
-            for (int i = 0; i < 8; i++)
-            {
-                dynBlockPropValues[i] = pc[i].Value.ToString();
-            }
-            Point3d midPoint = GetCenterOfABlock(br);
-            parkingBuildings.Add(new ParkingBuildingModel(city, dynBlockPropValues, zoneBorders[1].FirstOrDefault(c => c.Name == dynBlockPropValues[1]), midPoint));
-        }
+        var parkingBuildings = DataImport.GetParkingBuildings(city, zoneBorders[0], exParking);
         //Creating lines for table
         List<string[]> parkTableList = new List<string[]>();
         foreach (var item in plotNumbers)
@@ -226,7 +203,7 @@ internal static class DataProcessing
         //Getting total existing parkings on plot of each building.
         var exParkingOnPlot = GetExParkingOnBuildingPlot(parkingBlocks, buildingNames, buildingPlotNumbers);
         //Creating table in autocad
-        DataExport.CreateTable(parkTableList, buildingNames, parkReqForTable, exParkingOnPlot, "Name");
+        DataExport.CreateTable(parkTableList, buildingNames, parkReqForTable, exParkingOnPlot);
     }
     public static string[] CreateLineForParkingTable(List<ParkingBlockModel> parkingBlocks, List<string> names, string plotNumber, List<ZoneBorderModel> borders = null, bool isParkingBuilding = false, ParkingBuildingModel parBuild = null)
     {

@@ -1,0 +1,31 @@
+﻿<Window x:Class="Parking.Forms.InfoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Parking.Forms"
+        mc:Ignorable="d"
+        Title="InfoWindow" Height="450" Width="800"
+        Background="Gray"
+        Foreground="Black">
+    <Grid>
+        <Label>
+            <TextBlock FontSize="20" TextWrapping="Wrap">
+                Блоки парковок могут находится на любом слое. <LineBreak/>
+                Границы благоустройства домов, при расположении их в том же файле или в отдельной ссылке, должны находится на слоях <Bold>"13_Граница_ГП-ХХ"</Bold>
+                При расположении их в отдельных внешних ссылках на слое <Bold>"09_Граница_благоустройства"</Bold><LineBreak/>
+                Блоки зданий, при расположении их в том же файле или в отдельной ссылке, должны находиться на слоях <Bold>"21_Жилые_дома"</Bold> и <Bold>"25_Паркинги"</Bold> соответственно.<LineBreak/>
+                Границы участков должны находится на слое <Bold>"19_Кад_участки"</Bold>, номера участков - <Bold>"10_Номера_участков"</Bold>.
+            </TextBlock>
+        </Label>
+        <Button x:Name="closeButton"
+                Content="Закрыть"
+                Click="closeButton_Click"
+                FontSize="20"
+                Height="40"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Width="120"
+                Margin="5"/>
+    </Grid>
+</Window>

@@ -9,11 +9,13 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 
+using Parking.Models;
+
 using AcBr = Autodesk.AutoCAD.BoundaryRepresentation;
 
 namespace Parking.Functions;
 
-internal class DataImport
+internal static class DataImport
 {
     public static List<T> GetAllElementsOfTypeInDrawing<T>(string xrefName = null, bool everywhere = false) where T : Entity
     {
@@ -27,7 +29,6 @@ internal class DataImport
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
                 var bT = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                BlockTableRecord bTr;
                 if (everywhere)
                 {
                     XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
@@ -52,7 +53,7 @@ internal class DataImport
                 }
                 if (xrefList.Count == 0)
                 {
-                    bTr = (BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                    var bTr = (BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead);
                     foreach (var item in bTr)
                     {
                         if (item.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(T))))
@@ -162,6 +163,76 @@ internal class DataImport
         PromptPointOptions pPtOpts = new("\nВыберете точку положения таблицы: ");
         return ed.GetPoint(pPtOpts).Value;
     }
+    //Getting building models expand to allow xref and all options?
+    public static List<ApartmentBuildingModel> GetApartmentBuildings(CityModel city, List<ZoneBorderModel> zoneBorders, List<ParkingModel> exParking)
+    {
+        List<ApartmentBuildingModel> output = new();
+        Document doc = Application.DocumentManager.MdiActiveDocument;
+        Database db = doc.Database;
+        using (DocumentLock lk = doc.LockDocument())
+        {
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                var bT = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                var bTr = (BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                foreach (var item in bTr)
+                {
+                    if (item.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(BlockReference))))
+                    {
+                        var br = (BlockReference)tr.GetObject(item, OpenMode.ForRead);
+                        if (br.Layer == Variables.apartmentsBuildingsLayer)
+                        {
+                            string[] dynBlockPropValues = new string[9];
+                            DynamicBlockReferencePropertyCollection pc = br.DynamicBlockReferencePropertyCollection;
+                            for (int i = 0; i < dynBlockPropValues.Length; i++)
+                            {
+                                dynBlockPropValues[i] = pc[i].Value.ToString();
+                            }
+                            Point3d midPoint = DataProcessing.GetCenterOfABlock(br);
+                            output.Add(new ApartmentBuildingModel(city, dynBlockPropValues, zoneBorders.First(x => x.Name == dynBlockPropValues[1]), exParking.First(x => x.Name == dynBlockPropValues[1]), midPoint));
+                        }
+                    }
+                }
+                tr.Commit();
+            }
+        }
+        return output;
+    }
+    //Getting parkingbuilding models expand to allow xref and all options?
+    public static List<ParkingBuildingModel> GetParkingBuildings(CityModel city, List<ZoneBorderModel> zoneBorders, List<ParkingModel> exParking)
+    {
+        List<ParkingBuildingModel> output = new();
+        Document doc = Application.DocumentManager.MdiActiveDocument;
+        Database db = doc.Database;
+        using (DocumentLock lk = doc.LockDocument())
+        {
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                var bT = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
+                var bTr = (BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead);
+                foreach (var item in bTr)
+                {
+                    if (item.ObjectClass.IsDerivedFrom(Variables.rxClassBlockReference))
+                    {
+                        var br = (BlockReference)tr.GetObject(item, OpenMode.ForRead);
+                        if (br.Layer == Variables.parkingBuildingsLayer)
+                        {
+                            string[] dynBlockPropValues = new string[8];
+                            DynamicBlockReferencePropertyCollection pc = br.DynamicBlockReferencePropertyCollection;
+                            for (int i = 0; i < dynBlockPropValues.Length; i++)
+                            {
+                                dynBlockPropValues[i] = pc[i].Value.ToString();
+                            }
+                            Point3d midPoint = DataProcessing.GetCenterOfABlock(br);
+                            output.Add(new ParkingBuildingModel(city, dynBlockPropValues, zoneBorders.First(c => c.Name == dynBlockPropValues[1]), midPoint));
+                        }
+                    }
+                }
+                tr.Commit();
+            }
+        }
+        return output;
+    }
     //Method to get all attributes from a block
     public static List<Dictionary<string, string>> GetAllAttributesFromBlockReferences(List<BlockReference> brList)
     {
@@ -197,25 +268,6 @@ internal class DataImport
         for (int i = 1; i < XrGraph.NumNodes; i++)
         {
             output.Add(XrGraph.GetXrefNode(i));
-        }
-        return output;
-    }
-    internal static List<DynamicBlockReferencePropertyCollection> GetDynamicProperties(List<BlockReference> blocks)
-    {
-        Document doc = Application.DocumentManager.MdiActiveDocument;
-        Database db = doc.Database;
-        List<DynamicBlockReferencePropertyCollection> output = new();
-        using (Transaction tr = db.TransactionManager.StartTransaction())
-        {
-            using (DocumentLock acLckDoc = doc.LockDocument())
-            {
-
-                foreach (var br in blocks)
-                {
-                    output.Add(br.DynamicBlockReferencePropertyCollection);
-                }
-                tr.Commit();
-            }
         }
         return output;
     }

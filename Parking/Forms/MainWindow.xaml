@@ -6,7 +6,9 @@
         mc:Ignorable="d"
         Title="Работа с парковками" Height="300" Width="600"
         Background="DarkGray"
-        Foreground="Black">
+        Foreground="Black" 
+        Topmost="True" 
+        WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
@@ -135,6 +137,14 @@
                 Grid.Row="4"
                 TabIndex="8"/>
         <!-- row 5 -->
+        <Button x:Name="infoButton"
+                Content="Помощь"
+                Click="infoButton_Click"
+                FontSize="20"
+                Margin="5"
+                Grid.Column="0"
+                Grid.Row="5"
+                TabIndex="8"/>
         <Button x:Name="createButton"
                 Click="createButton_Click"
                 Content="Создать таблицу"

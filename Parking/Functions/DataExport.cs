@@ -14,7 +14,7 @@ namespace Parking.Functions
     internal class DataExport
     {
         //Function that generates auotcad table, requires list of rows (string array)
-        internal static void CreateTable(List<string[]> list, List<string> buildingNames, List<ParkingModel> parkingReq, int[] onPlot, string name)
+        internal static void CreateTable(List<string[]> list, List<string> buildingNames, List<ParkingModel> parkingReq, int[] onPlot)
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Editor ed = doc.Editor;
@@ -59,7 +59,7 @@ namespace Parking.Functions
                     };
                     //Creating title
                     tb.Rows[0].Style = "Название";
-                    tb.Cells[0, 0].TextString = $"Распределение парковок по домам и участкам на площадке {name}";
+                    tb.Cells[0, 0].TextString = $"Распределение парковок по домам и участкам на площадке";
                     //Creating header
                     tb.SetRowHeight(8);
                     tb.SetColumnWidth(8);
@@ -122,12 +122,12 @@ namespace Parking.Functions
                             //First row
                             for (int i = 1; i < list[j].Length; i++)
                             {
-                                tb.Cells[currentRow, i].TextString = list[j][i] == "0" ? "" : list[j][i];
+                                tb.Cells[currentRow, i].TextString = ((list[j][i] == "0") || (list[j][i] == null)) ? "" : list[j][i];
                             }
                             //Second row
                             for (int i = 1; i < list[j + 1].Length; i++)
                             {
-                                tb.Cells[currentRow + 1, i].TextString = list[j + 1][i] == "0" ? "" : list[j + 1][i];
+                                tb.Cells[currentRow + 1, i].TextString = ((list[j + 1][i] == "0") || (list[j + 1][i] == null)) ? "" : list[j + 1][i];
                             }
                             currentRow++;
                             j++;
@@ -142,7 +142,7 @@ namespace Parking.Functions
                             //tb.Cells[currentRow, 0].TextString = list[j][1].Contains("Паркинг") ? tb.Cells[currentRow, 0].TextString = list[j][0] + " " + list[j][1] : tb.Cells[currentRow, 0].TextString = list[j][0];
                             for (int i = 2; i < list[j].Length; i++)
                             {
-                                tb.Cells[currentRow, i].TextString = list[j][i] == "0" ? "" : list[j][i];
+                                tb.Cells[currentRow, i].TextString = ((list[j][i] == "0") || (list[j][i] == null)) ? "" : list[j][i];
                             }
                         }
                     }
@@ -182,7 +182,7 @@ namespace Parking.Functions
                     tb.InsertRows(currentRow, 8, 1);
                     for (var i = 2; i < req.Length; i++)
                     {
-                        tb.Cells[currentRow, i].TextString = req[i] == "0" ? "" : req[i];
+                        tb.Cells[currentRow, i].TextString = ((req[i] == "0") || (req[i] == null)) ? "" : req[i];
                     }
                     range = CellRange.Create(tb, currentRow, 0, currentRow, 1);
                     tb.MergeCells(range);

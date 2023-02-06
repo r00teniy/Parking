@@ -54,6 +54,7 @@ namespace Parking.Forms
         {
             CreateCityWindow createCityWindow = new CreateCityWindow();
             createCityWindow.ShowDialog();
+            cityBox.SelectedIndex = Variables.cityList.Count - 1;
         }
 
         private void deleteCityButton_Click(object sender, RoutedEventArgs e)
@@ -125,7 +126,15 @@ namespace Parking.Forms
 
         private void createButton_Click(object sender, RoutedEventArgs e)
         {
+            Hide();
             Functions.DataProcessing.CreateParkingTableWithData((CityModel)cityBox.SelectedItem);
+            Show();
+        }
+
+        private void infoButton_Click(object sender, RoutedEventArgs e)
+        {
+            InfoWindow infoWindow = new();
+            infoWindow.Show();
         }
     }
 }
