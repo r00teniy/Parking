@@ -3,11 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Parking.Forms"
         mc:Ignorable="d"
         Title="Работа с парковками" Height="300" Width="600"
         Background="DarkGray"
-    xmlns:theme="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero2">
+        Foreground="Black">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
@@ -62,6 +61,7 @@
                Margin="5"
                Grid.Row="1"/>
         <ComboBox x:Name="zonesBlockSearchTypeBox"
+                  SelectionChanged="zonesBlockSearchTypeBox_SelectionChanged"
                   FontSize="20"
                   Grid.Column="2" 
                   Grid.Row="1"
@@ -83,6 +83,7 @@
                Margin="5"
                Grid.Row="2"/>
         <ComboBox x:Name="plotBlockSearchTypeBox"
+                  SelectionChanged="plotBlockSearchTypeBox_SelectionChanged"
                   FontSize="20"
                   Grid.Column="2" 
                   Grid.Row="2"
@@ -135,6 +136,7 @@
                 TabIndex="8"/>
         <!-- row 5 -->
         <Button x:Name="createButton"
+                Click="createButton_Click"
                 Content="Создать таблицу"
                 FontSize="20"
                 Margin="5"
