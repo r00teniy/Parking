@@ -147,7 +147,7 @@ internal static class DataProcessing
                         if (br.Layer == Variables.parkingBuildingsLayer && br != null)
                         {
                             var pc = br.DynamicBlockReferencePropertyCollection;
-                            var plotNumbner = borders.Where(x => x.Name == pc[1].ToString()).First().PlotNumber;
+                            var plotNumbner = borders.Where(x => x.Name == pc[1].Value.ToString()).First().PlotNumber;
                             for (var i = 8; i < 22; i += 2)
                             {
                                 if (Convert.ToInt32(pc[i + 1].Value) != 0)
@@ -166,6 +166,7 @@ internal static class DataProcessing
     {
         var plotBorders = GetPlotBorders();
         var zoneBorders = GetZoneBorders();
+        AddPlotNumbersToZones(ref zoneBorders, plotBorders);
         var parkingBlocks = GetExParkingBlocks(zoneBorders[0]);
         var buildingNames = zoneBorders[0].OrderBy(x => x.Name).Select(x => x.Name).ToList();
         var plotNumbers = plotBorders.Select(x => x.PlotNumber).ToList();
@@ -173,15 +174,16 @@ internal static class DataProcessing
         var exParking = GetExParking(parkingBlocks);
         //Getting buildings
         var buildings = new List<ApartmentBuildingModel>();
-        foreach (var br in DataImport.GetAllElementsOfTypeOnLayer<BlockReference>(Variables.apartmentsBuildingsLayer))
+        var buildingBlockList = DataImport.GetAllElementsOfTypeOnLayer<BlockReference>(Variables.apartmentsBuildingsLayer);
+        var buildingDPList = DataImport.GetDynamicProperties(buildingBlockList);
+        for (var j = 0; j < buildingBlockList.Count; j++)
         {
             string[] dynBlockPropValues = new string[9];
-            DynamicBlockReferencePropertyCollection pc = br.DynamicBlockReferencePropertyCollection;
             for (int i = 0; i < dynBlockPropValues.Length; i++)
             {
-                dynBlockPropValues[i] = pc[i].Value.ToString();
+                dynBlockPropValues[i] = buildingDPList[j][i].Value.ToString();
             }
-            Point3d midPoint = GetCenterOfABlock(br);
+            Point3d midPoint = GetCenterOfABlock(buildingBlockList[j]);
             buildings.Add(new ApartmentBuildingModel(city, dynBlockPropValues, zoneBorders[0].Where(x => x.Name == dynBlockPropValues[1]).First(), exParking.Where(x => x.Name == dynBlockPropValues[1]).First(), midPoint));
         }
         //Getting parking buildings
@@ -350,10 +352,15 @@ internal static class DataProcessing
     {
         List<ParkingModel> output = new List<ParkingModel>();
         var buildingNames = blocks.Select(x => x.ParkingIsForBuildingName).Distinct().OrderBy(x => x).ToArray();
-        List<ParkingBlockModel>[] sortedBlocks = new List<ParkingBlockModel>[buildingNames.Length];
+        List<List<ParkingBlockModel>> sortedBlocks = new();
+        for (int i = 0; i < buildingNames.Length; i++)
+        {
+            sortedBlocks.Add(new List<ParkingBlockModel>());
+        }
         foreach (var block in blocks)
         {
             var nameId = Array.IndexOf(buildingNames, block.ParkingIsForBuildingName);
+
             sortedBlocks[nameId].Add(block);
         }
         foreach (var block in sortedBlocks)
@@ -361,5 +368,26 @@ internal static class DataProcessing
             output.Add(new ParkingModel(block, null, block[0].ParkingIsForBuildingName));
         }
         return output;
+    }
+    //Function that adds plotNumber to zones
+    private static void AddPlotNumbersToZones(ref List<List<ZoneBorderModel>> zones, List<PlotBorderModel> plots)
+    {
+        for (int j = 0; j < zones.Count; j++)
+        {
+            for (var i = 0; i < zones[j].Count; i++)
+            {
+                Point3d point = zones[j][i].Polyline.GeometricExtents.MinPoint + (zones[j][i].Polyline.GeometricExtents.MaxPoint - zones[j][i].Polyline.GeometricExtents.MinPoint) / 2;
+                if (DataImport.GetPointContainment(zones[j][i].Polyline, point) != PointContainment.Outside)
+                {
+                    foreach (var pl in plots)
+                    {
+                        if (DataImport.GetPointContainment(pl.Polyline, point) != PointContainment.Outside)
+                        {
+                            zones[j][i].PlotNumber = pl.PlotNumber;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

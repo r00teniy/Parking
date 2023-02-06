@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
+
 using Autodesk.AutoCAD.DatabaseServices;
+
 using Parking.Models;
 
 namespace Parking.Forms
@@ -18,10 +14,10 @@ namespace Parking.Forms
     /// </summary>
     public partial class MainWindow : Window
     {
-        private BindingList<XrefGraphNode> xRefs = new BindingList<XrefGraphNode>(Functions.DataImport.GetXRefList());
+        public BindingList<XrefGraphNode> xRefs = new BindingList<XrefGraphNode>(Functions.DataImport.GetXRefList());
         public MainWindow()
         {
-            
+
             InitializeComponent();
 
             selectedParkingBlocksXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });

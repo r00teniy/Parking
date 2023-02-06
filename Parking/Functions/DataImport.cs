@@ -200,6 +200,25 @@ internal class DataImport
         }
         return output;
     }
+    internal static List<DynamicBlockReferencePropertyCollection> GetDynamicProperties(List<BlockReference> blocks)
+    {
+        Document doc = Application.DocumentManager.MdiActiveDocument;
+        Database db = doc.Database;
+        List<DynamicBlockReferencePropertyCollection> output = new();
+        using (Transaction tr = db.TransactionManager.StartTransaction())
+        {
+            using (DocumentLock acLckDoc = doc.LockDocument())
+            {
+
+                foreach (var br in blocks)
+                {
+                    output.Add(br.DynamicBlockReferencePropertyCollection);
+                }
+                tr.Commit();
+            }
+        }
+        return output;
+    }
     //Functions to check if something is inside polyline
     internal static PointContainment CheckIfObjectIsInsidePolyline(Polyline pl, Object obj)
     {
@@ -229,7 +248,7 @@ internal class DataImport
             return regions.Cast<Region>().First();
         }
     }
-    private static PointContainment GetPointContainment(Curve curve, Point3d point)
+    internal static PointContainment GetPointContainment(Curve curve, Point3d point)
     {
         if (!curve.Closed)
             throw new ArgumentException("Curve must be closed.");
