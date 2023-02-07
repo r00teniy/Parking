@@ -2,14 +2,16 @@
 using System.Globalization;
 
 namespace Parking.Models;
-internal class CityModel
+
+[Serializable]
+public class CityModel
 {
-    public string Name { get; private set; }
-    public double SqMPerPerson { get; private set; }
-    public string LongParkingFormula { get; private set; }
-    public string GuestParkingFormula { get; private set; }
-    public string OfficeParkingFormula { get; private set; }
-    public string StoreParkingFormula { get; private set; }
+    public string Name { get; set; }
+    public double SqMPerPerson { get; set; }
+    public string LongParkingFormula { get; set; }
+    public string GuestParkingFormula { get; set; }
+    public string OfficeParkingFormula { get; set; }
+    public string StoreParkingFormula { get; set; }
 
     public CityModel(string longParkingFormula, string guestParkingFormula, string officesParkingFormula, string storeParkingFormula, string name, string sqMPerPerson)
     {
@@ -21,6 +23,9 @@ internal class CityModel
         SqMPerPerson = Convert.ToDouble(sqMPerPerson.Replace(',', '.'), CultureInfo.InvariantCulture);
     }
 
+    public CityModel()
+    {
+    }
     public ParkingModel CalculateParking(string name, double[] parameters, ParkingModel exParking)
     {
         string longParkingFormulaWithData = ReplaceDataInFormula(LongParkingFormula, parameters, exParking, 0);

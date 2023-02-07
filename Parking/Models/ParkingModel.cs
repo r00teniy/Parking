@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Parking.Models;
 
-internal class ParkingModel
+public class ParkingModel
 {
     public string Name { get; private set; }
     public string PlotNumber { get; private set; }

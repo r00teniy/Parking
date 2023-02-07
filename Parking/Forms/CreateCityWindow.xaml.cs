@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using Parking.Functions;
+using System.Windows;
 
 namespace Parking.Forms;
 /// <summary>
@@ -26,6 +27,7 @@ public partial class CreateCityWindow : Window
     {
         //TODO: add checks
         Variables.cityList.Add(new Models.CityModel(LongParkingReq.Text, GuestParkingReq.Text, OfficeParkingReq.Text, StoreParkingReq.Text, CityName.Text, SqMPerPerson.Text));
+        SettingsStorage.SaveCityParameters();
         MessageBox.Show("Параметры города созданы", "Сообщение", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

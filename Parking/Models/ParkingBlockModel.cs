@@ -2,7 +2,7 @@
 
 namespace Parking.Models;
 
-internal class ParkingBlockModel
+public class ParkingBlockModel
 {
     public int NumberOfParkings { get; private set; }
     public string ParkingIsForBuildingName { get; private set; }

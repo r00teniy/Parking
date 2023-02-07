@@ -1,10 +1,11 @@
 ﻿using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 
 using Autodesk.AutoCAD.DatabaseServices;
-
+using Parking.Functions;
 using Parking.Models;
 
 namespace Parking.Forms
@@ -17,9 +18,11 @@ namespace Parking.Forms
         public BindingList<XrefGraphNode> xRefs = new BindingList<XrefGraphNode>(Functions.DataImport.GetXRefList());
         public MainWindow()
         {
+            //Loading settings
+            SettingsStorage.ReadCityParameters();
 
             InitializeComponent();
-
+            
             selectedParkingBlocksXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
             selectedParkingBlocksXrefBox.DisplayMemberPath = "Name";
             selectedParkingBlocksXrefBox.SelectedIndex = 0;
@@ -39,9 +42,17 @@ namespace Parking.Forms
 
             cityBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = Variables.cityList });
             cityBox.DisplayMemberPath = "Name";
+            string cityName = SettingsStorage.ReadCity();
             if (Variables.cityList.Count != 0)
             {
-                cityBox.SelectedIndex = 0;
+                if (cityName != null && Variables.cityList.Where(x => x.Name == cityName).ToList().Count > 0)
+                {
+                    cityBox.SelectedIndex = Variables.cityList.IndexOf(Variables.cityList.Where(x => x.Name == cityName).First());
+                }
+                else
+                {
+                    cityBox.SelectedIndex = 0;
+                }
             }
         }
 
@@ -127,7 +138,9 @@ namespace Parking.Forms
         private void createButton_Click(object sender, RoutedEventArgs e)
         {
             Hide();
-            Functions.DataProcessing.CreateParkingTableWithData((CityModel)cityBox.SelectedItem);
+            var selectedCity = (CityModel)cityBox.SelectedItem;
+            DataProcessing.CreateParkingTableWithData(selectedCity);
+            SettingsStorage.SaveCity(selectedCity.Name);
             Show();
         }
 
