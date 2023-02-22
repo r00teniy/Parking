@@ -41,7 +41,7 @@ internal class ParkingReqModel
         parkShort += Convert.ToInt32(Math.Ceiling(HospitalParkingReq * parameters[8]));
         parkShort += Convert.ToInt32(Math.Ceiling(SportBuildingsParkingReq * parameters[9]));
         parkShort += Convert.ToInt32(Math.Ceiling(PublicFoodParkingReq * parameters[10]));
-        ParkingModel parking = new ParkingModel(name, parkLong, parkShort, parkGuest);
+        ParkingModel parking = new(name, parkLong, parkShort, parkGuest);
         return parking;
     }
 

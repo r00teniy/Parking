@@ -4,7 +4,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 
-using Autodesk.AutoCAD.DatabaseServices;
 using Parking.Functions;
 using Parking.Models;
 
@@ -15,23 +14,22 @@ namespace Parking.Forms
     /// </summary>
     public partial class MainWindow : Window
     {
-        public BindingList<XrefGraphNode> xRefs = new BindingList<XrefGraphNode>(Functions.DataImport.GetXRefList());
+        public BindingList<string> xRefs = new(DataImport.GetXRefList());
         public MainWindow()
         {
             //Loading settings
             SettingsStorage.ReadCityParameters();
-
             InitializeComponent();
-            
+
             selectedParkingBlocksXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
-            selectedParkingBlocksXrefBox.DisplayMemberPath = "Name";
-            selectedParkingBlocksXrefBox.SelectedIndex = 0;
+            //selectedParkingBlocksXrefBox.DisplayMemberPath = "Name";
+            //selectedParkingBlocksXrefBox.SelectedIndex = 0;
             selectedPlotsXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
-            selectedPlotsXrefBox.DisplayMemberPath = "Name";
-            selectedPlotsXrefBox.SelectedIndex = 0;
+            //selectedPlotsXrefBox.DisplayMemberPath = "Name";
+            //selectedPlotsXrefBox.SelectedIndex = 0;
             selectedZonesXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
-            selectedZonesXrefBox.DisplayMemberPath = "Name";
-            selectedZonesXrefBox.SelectedIndex = 0;
+            //selectedZonesXrefBox.DisplayMemberPath = "Name";
+            //selectedZonesXrefBox.SelectedIndex = 0;
 
             parkingBlockSearchTypeBox.ItemsSource = Variables.whereToFind;
             zonesBlockSearchTypeBox.ItemsSource = Variables.whereToFind;
@@ -63,7 +61,7 @@ namespace Parking.Forms
 
         private void createCityButton_Click(object sender, RoutedEventArgs e)
         {
-            CreateCityWindow createCityWindow = new CreateCityWindow();
+            CreateCityWindow createCityWindow = new();
             createCityWindow.ShowDialog();
             cityBox.SelectedIndex = Variables.cityList.Count - 1;
         }
@@ -85,6 +83,7 @@ namespace Parking.Forms
                 if (xRefs.Count != 0)
                 {
                     selectedParkingBlocksXrefBox.IsEnabled = true;
+                    selectedParkingBlocksXrefBox.SelectedIndex = selectedParkingBlocksXrefBox.SelectedIndex == -1 ? 0 : selectedParkingBlocksXrefBox.SelectedIndex;
                 }
                 else
                 {
@@ -139,7 +138,7 @@ namespace Parking.Forms
         {
             Hide();
             var selectedCity = (CityModel)cityBox.SelectedItem;
-            DataProcessing.CreateParkingTableWithData(selectedCity);
+            DataProcessing.CreateParkingTableWithData(selectedCity, plotBlockSearchTypeBox.SelectedIndex == 1 ? selectedPlotsXrefBox.Text : null, plotBlockSearchTypeBox.SelectedIndex == 2, zonesBlockSearchTypeBox.SelectedIndex == 1 ? selectedZonesXrefBox.Text : null, zonesBlockSearchTypeBox.SelectedIndex == 2, parkingBlockSearchTypeBox.SelectedIndex == 1 ? selectedParkingBlocksXrefBox.Text : null, parkingBlockSearchTypeBox.SelectedIndex == 2);
             SettingsStorage.SaveCity(selectedCity.Name);
             Show();
         }

@@ -11,10 +11,10 @@ namespace Parking.Functions;
 internal static class SettingsStorage
 {
     private static string fileName = "CityParameters.xml";
-    private static XmlSerializer serializer = new XmlSerializer(typeof(BindingList<CityModel>));
+    private static XmlSerializer serializer = new(typeof(BindingList<CityModel>));
     internal static void SaveCityParameters()
     {
-        StreamWriter myWriter = new StreamWriter(fileName);
+        StreamWriter myWriter = new(fileName);
         serializer.Serialize(myWriter, Variables.cityList);
         myWriter.Close();
     }

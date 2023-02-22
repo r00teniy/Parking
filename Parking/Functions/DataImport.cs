@@ -32,7 +32,7 @@ internal static class DataImport
                 if (everywhere)
                 {
                     XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
-                    for (int i = 0; i < XrGraph.NumNodes; i++)
+                    for (int i = 1; i < XrGraph.NumNodes; i++)
                     {
                         xrefList.Add(XrGraph.GetXrefNode(i));
                     }
@@ -84,48 +84,64 @@ internal static class DataImport
         }
         return output;
     }
-    public static List<T> GetAllElementsOfTypeOnLayer<T>(string layer, string xrefName = null) where T : Entity
+    public static List<T> GetAllElementsOfTypeOnLayer<T>(string layer, string xrefName = null, bool everywhere = false) where T : Entity
     {
         Document doc = Application.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         List<T> output = new();
+        var xrefList = new List<XrefGraphNode>();
+        var btrList = new List<BlockTableRecord>();
         using (DocumentLock lk = doc.LockDocument())
         {
             using (Transaction tr = db.TransactionManager.StartTransaction())
             {
                 var bT = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                BlockTableRecord bTr;
-                XrefGraphNode xref;
-                if (xrefName == null)
-                {
-                    bTr = (BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead);
-                }
-                else
+                if (everywhere)
                 {
                     XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
-                    xref = XrGraph.GetXrefNode(0);
                     for (int i = 1; i < XrGraph.NumNodes; i++)
+                    {
+                        xrefList.Add(XrGraph.GetXrefNode(i));
+                    }
+                    btrList.Add((BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead));
+                }
+                else if (xrefName != null)
+                {
+                    XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
+                    for (int i = 0; i < XrGraph.NumNodes; i++)
                     {
                         XrefGraphNode XrNode = XrGraph.GetXrefNode(i);
                         if (XrNode.Name == xrefName)
                         {
-                            xref = XrNode;
+                            xrefList.Add(XrNode);
                             break;
                         }
                     }
-                    bTr = (BlockTableRecord)tr.GetObject(xref.BlockTableRecordId, OpenMode.ForRead);
                 }
-                foreach (var item in bTr)
+                else
                 {
-                    if (item.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(T))))
+                    btrList.Add((BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead));
+                }
+
+                foreach (var xref in xrefList)
+                {
+                    btrList.Add((BlockTableRecord)tr.GetObject(xref.BlockTableRecordId, OpenMode.ForRead));
+                }
+                foreach (var btr in btrList)
+                {
+                    foreach (var item in btr)
                     {
-                        var entity = (T)tr.GetObject(item, OpenMode.ForRead);
-                        if (entity.Layer == layer)
+                        if (item.ObjectClass.IsDerivedFrom(RXObject.GetClass(typeof(T))))
                         {
-                            output.Add(entity);
+                            var entity = (T)tr.GetObject(item, OpenMode.ForRead);
+                            if (entity.Layer.Contains(layer))
+                            {
+                                output.Add(entity);
+                            }
                         }
                     }
                 }
+
                 tr.Commit();
             }
         }
@@ -259,22 +275,22 @@ internal static class DataImport
         }
         return output;
     }
-    internal static List<XrefGraphNode> GetXRefList()
+    internal static List<string> GetXRefList()
     {
-        List<XrefGraphNode> output = new();
+        List<string> output = new();
         Document doc = Application.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
         for (int i = 1; i < XrGraph.NumNodes; i++)
         {
-            output.Add(XrGraph.GetXrefNode(i));
+            output.Add(XrGraph.GetXrefNode(i).Name);
         }
         return output;
     }
     //Functions to check if something is inside polyline
     internal static PointContainment CheckIfObjectIsInsidePolyline(Polyline pl, Object obj)
     {
-        Point3d pt = new Point3d(0, 0, 0);
+        Point3d pt = new(0, 0, 0);
         Curve cur = (Curve)pl;
         if (obj is DBText tx)
         { pt = tx.Position; }
@@ -289,7 +305,7 @@ internal static class DataImport
     {
         if (!curve.Closed)
             throw new ArgumentException("Curve must be closed.");
-        DBObjectCollection curves = new DBObjectCollection();
+        DBObjectCollection curves = new();
         curves.Add(curve);
         using (DBObjectCollection regions = Region.CreateFromCurves(curves))
         {
@@ -313,7 +329,7 @@ internal static class DataImport
     private static PointContainment GetPointContainment(Region region, Point3d point)
     {
         PointContainment result = PointContainment.Outside;
-        using (Brep brep = new Brep(region))
+        using (Brep brep = new(region))
         {
             if (brep != null)
             {

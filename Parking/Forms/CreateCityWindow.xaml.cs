@@ -14,7 +14,7 @@ public partial class CreateCityWindow : Window
 
     private void helpButton_Click(object sender, RoutedEventArgs e)
     {
-        HelpWindow help = new HelpWindow();
+        HelpWindow help = new();
         help.Show();
     }
 

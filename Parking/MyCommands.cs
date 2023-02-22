@@ -11,7 +11,7 @@ namespace Parking
         [CommandMethod("ParkNew")]
         static public void ParkNew()
         {
-            MainWindow mainWindow = new MainWindow();
+            MainWindow mainWindow = new();
             mainWindow.Show();
         }
     }

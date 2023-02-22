@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.BoundaryRepresentation;
@@ -16,158 +17,183 @@ namespace Parking.Functions;
 internal static class DataProcessing
 {
     //Function to get all informations on plot borders needed for model
-    public static List<List<ZoneBorderModel>> GetZoneBorders()
+    public static List<List<ZoneBorderModel>> GetZoneBorders(string xRefName, bool everywhere)
     {
-        //TODO: add option to get them from anywhere?
-        Document doc = Application.DocumentManager.MdiActiveDocument;
-        Database db = doc.Database;
-        List<List<ZoneBorderModel>> output = new List<List<ZoneBorderModel>>()
+        List<List<ZoneBorderModel>> output = new()
         {
             new List<ZoneBorderModel>(),
             new List<ZoneBorderModel>()
         };
-        using (Transaction tr = db.TransactionManager.StartTransaction())
+        List<Polyline> buildingBorders;
+        if (everywhere)
         {
-            using (DocumentLock acLckDoc = doc.LockDocument())
+            buildingBorders = DataImport.GetAllElementsOfTypeOnLayer<Polyline>(Variables.xRefBuildingBorderLayer, xRefName, everywhere);
+            buildingBorders.AddRange(DataImport.GetAllElementsOfTypeOnLayer<Polyline>(Variables.buildingBorderLayer, null, false));
+        }
+        else
+        {
+            buildingBorders = DataImport.GetAllElementsOfTypeOnLayer<Polyline>(Variables.buildingBorderLayer, xRefName, everywhere);
+        }
+        foreach (var buildingBorder in buildingBorders)
+        {
+            if (buildingBorder.Layer.Contains("|"))
             {
-                var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead, false) as BlockTable;
-                var btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead, false) as BlockTableRecord;
-                foreach (ObjectId objectId in btr)
-                {
-                    //Getting all polylines
-                    if (objectId.ObjectClass == Variables.rxClassPolyline)
-                    {
-                        var pl = tr.GetObject(objectId, OpenMode.ForRead) as Polyline;
-                        //getting polylines of building plot borders
-                        if (pl.Layer.Contains(Variables.buildingBorderLayer) && pl != null)
-                        {
-                            output[0].Add(new ZoneBorderModel(pl.Layer.Replace(Variables.buildingBorderLayer, ""), pl));
-                        }
-                        //getting stage borders
-                        else if (pl.Layer.Contains(Variables.stageBorderLayer) && pl != null)
-                        {
-                            output[1].Add(new ZoneBorderModel(pl.Layer.Replace(Variables.stageBorderLayer, ""), pl));
-                        }
-                    }
-                }
+                Regex name = new(@"ГП-\d+");
+                output[0].Add(new ZoneBorderModel(name.Match(buildingBorder.Layer).Value, buildingBorder));
             }
-            tr.Commit();
+            else
+            {
+                output[0].Add(new ZoneBorderModel(buildingBorder.Layer.Replace(Variables.buildingBorderLayer, ""), buildingBorder));
+            }
+        }
+        var stageBorders = DataImport.GetAllElementsOfTypeOnLayer<Polyline>(Variables.stageBorderLayer, xRefName, everywhere);
+        foreach (var stageBorder in stageBorders)
+        {
+            if (stageBorder.Layer.Contains("|"))
+            {
+                output[1].Add(new ZoneBorderModel(stageBorder.Layer.Split('|')[1].Replace(Variables.stageBorderLayer, ""), stageBorder));
+            }
+            else
+            {
+                output[1].Add(new ZoneBorderModel(stageBorder.Layer.Replace(Variables.stageBorderLayer, ""), stageBorder));
+            }
         }
         return output;
     }
     //Getting Plot borders
-    public static List<PlotBorderModel> GetPlotBorders()
+    public static List<PlotBorderModel> GetPlotBorders(string xRefName, bool everywhere)
     {
+        List<PlotBorderModel> output = new();
+
+        List<Polyline> plotsBordersList = DataImport.GetAllElementsOfTypeOnLayer<Polyline>(Variables.plotsBorderLayer, xRefName, everywhere);
+
+        foreach (var border in plotsBordersList)
+        {
+            if (border.Layer.Contains('|'))
+            {
+                output.Add(new PlotBorderModel(border.Layer.Split('|')[1].Replace(Variables.plotsBorderLayer, ""), border));
+            }
+            else
+            {
+                output.Add(new PlotBorderModel(border.Layer.Replace(Variables.plotsBorderLayer, ""), border));
+            }
+        }
+
+        return output;
+    }
+
+    //Function that creates parking block models for existing parking parts
+    public static List<ParkingBlockModel> GetExParkingBlocks(List<ZoneBorderModel> borders, string xRefName, bool everywhere)
+    {
+        List<ParkingBlockModel> output = new();
         Document doc = Application.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         Editor ed = doc.Editor;
-        List<PlotBorderModel> output = new List<PlotBorderModel>();
+
         using (Transaction tr = db.TransactionManager.StartTransaction())
         {
             using (DocumentLock acLckDoc = doc.LockDocument())
             {
-                List<Polyline> plotsBordersList = DataImport.GetAllElementsOfTypeOnLayer<Polyline>(Variables.plotsBorderLayer);
-                List<DBText> plotsBorderTextobjects = DataImport.GetAllElementsOfTypeOnLayer<DBText>(Variables.plotNumbersLayer);
-                if (plotsBordersList.Count == plotsBorderTextobjects.Count)
+                var xrefList = new List<XrefGraphNode>();
+                var btrList = new List<BlockTableRecord>();
+                var bT = tr.GetObject(db.BlockTableId, OpenMode.ForRead, false) as BlockTable;
+                if (everywhere)
                 {
-                    for (int i = 0; i < plotsBordersList.Count; i++)
+                    XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
+                    for (int i = 1; i < XrGraph.NumNodes; i++)
                     {
-                        int countCheck = output.Count;
-                        foreach (var item in plotsBorderTextobjects)
+                        xrefList.Add(XrGraph.GetXrefNode(i));
+                    }
+                    btrList.Add((BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead));
+                }
+                else if (xRefName != null)
+                {
+                    XrefGraph XrGraph = db.GetHostDwgXrefGraph(false);
+                    for (int i = 0; i < XrGraph.NumNodes; i++)
+                    {
+                        XrefGraphNode XrNode = XrGraph.GetXrefNode(i);
+                        if (XrNode.Name == xRefName)
                         {
-                            // Checking if text position is inside polyline
-                            if (DataImport.CheckIfObjectIsInsidePolyline(plotsBordersList[i], item) != PointContainment.Outside)
-                            {
-                                // Creating EntityBorderM<odel
-                                output.Add(new PlotBorderModel(item.TextString, plotsBordersList[i]));
-                            }
-                        }
-                        if (countCheck == output.Count) //chercking that every border has text inside
-                        {
-                            ed.WriteMessage("К 1+ из границ не был найден номер, проверьте что у каждой границы есть номер внутри\n");
+                            xrefList.Add(XrNode);
+                            break;
                         }
                     }
                 }
                 else
                 {
-                    ed.WriteMessage("Кол-во участков и подписей не совпадает\n");
+                    btrList.Add((BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForRead));
                 }
-            }
-            tr.Commit();
-        }
-        return output;
-    }
 
-    //Function that creates parking block models for existing parking parts
-    public static List<ParkingBlockModel> GetExParkingBlocks(List<ZoneBorderModel> borders)
-    {
-        List<ParkingBlockModel> output = new List<ParkingBlockModel>();
-        Document doc = Application.DocumentManager.MdiActiveDocument;
-        Database db = doc.Database;
-        Editor ed = doc.Editor;
-        using (Transaction tr = db.TransactionManager.StartTransaction())
-        {
-            using (DocumentLock acLckDoc = doc.LockDocument())
-            {
-                var bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead, false) as BlockTable;
-                var btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead, false) as BlockTableRecord;
-                foreach (ObjectId objectId in btr)
+                foreach (var xref in xrefList)
                 {
-                    if (objectId.ObjectClass == Variables.rxClassBlockReference)
+                    btrList.Add((BlockTableRecord)tr.GetObject(xref.BlockTableRecordId, OpenMode.ForRead));
+                }
+                foreach (var btr in btrList)
+                {
+                    foreach (ObjectId objectId in btr)
                     {
-                        var br = tr.GetObject(objectId, OpenMode.ForRead) as BlockReference;
-                        try
+                        if (objectId.ObjectClass == Variables.rxClassBlockReference)
                         {
-                            ObjectId oi = br.AttributeCollection[1];
-                            var attRef = tr.GetObject(oi, OpenMode.ForRead) as AttributeReference;
-                            ObjectId oi2 = br.AttributeCollection[0];
-                            var attRef2 = tr.GetObject(oi2, OpenMode.ForRead) as AttributeReference;
-                            ObjectId oi3 = br.AttributeCollection[3];
-                            var attRef3 = tr.GetObject(oi3, OpenMode.ForRead) as AttributeReference;
+                            var br = tr.GetObject(objectId, OpenMode.ForRead) as BlockReference;
+                            if (br.AttributeCollection.Count == 4)
+                            {
 
-                            if (attRef.Tag == "Этап" && attRef2.Tag == "КОЛ-ВО")
-                            {
-                                string[] dynBlockPropValues = new string[7];
-                                var pc = br.DynamicBlockReferencePropertyCollection;
-                                for (var j = 0; j < pc.Count; j++)
-                                {
-                                    for (int i = 0; i < Variables.parkingBlockPararmArray.Length; i++)
-                                    {
-                                        if (pc[j].PropertyName == Variables.parkingBlockPararmArray[i])
-                                        { dynBlockPropValues[i] = pc[j].Value.ToString(); }
-                                    }
-                                }
-                                dynBlockPropValues[4] = attRef.TextString;
-                                dynBlockPropValues[5] = attRef2.TextString;
-                                dynBlockPropValues[6] = attRef3.TextString;
-                                output.Add(new ParkingBlockModel(dynBlockPropValues));
                             }
-                        }
-                        catch { }
-                        if (br.Layer == Variables.parkingBuildingsLayer && br != null)
-                        {
-                            var pc = br.DynamicBlockReferencePropertyCollection;
-                            var plotNumbner = borders.Where(x => x.Name == pc[1].Value.ToString()).First().PlotNumber;
-                            for (var i = 8; i < 22; i += 2)
+                            try
                             {
-                                if (Convert.ToInt32(pc[i + 1].Value) != 0)
+                                ObjectId oi = br.AttributeCollection[1];
+                                var attRef = tr.GetObject(oi, OpenMode.ForRead) as AttributeReference;
+                                ObjectId oi2 = br.AttributeCollection[0];
+                                var attRef2 = tr.GetObject(oi2, OpenMode.ForRead) as AttributeReference;
+                                ObjectId oi3 = br.AttributeCollection[3];
+                                var attRef3 = tr.GetObject(oi3, OpenMode.ForRead) as AttributeReference;
+
+                                if (attRef.Tag == "Этап" && attRef2.Tag == "КОЛ-ВО")
                                 {
-                                    output.Add(new ParkingBlockModel(Convert.ToInt32(pc[i + 1].Value), pc[i].Value.ToString(), plotNumbner));
+                                    string[] dynBlockPropValues = new string[7];
+                                    var pc = br.DynamicBlockReferencePropertyCollection;
+                                    for (var j = 0; j < pc.Count; j++)
+                                    {
+                                        for (int i = 0; i < Variables.parkingBlockPararmArray.Length; i++)
+                                        {
+                                            if (pc[j].PropertyName == Variables.parkingBlockPararmArray[i])
+                                            { dynBlockPropValues[i] = pc[j].Value.ToString(); }
+                                        }
+                                    }
+                                    dynBlockPropValues[4] = attRef.TextString;
+                                    dynBlockPropValues[5] = attRef2.TextString;
+                                    dynBlockPropValues[6] = attRef3.TextString;
+                                    output.Add(new ParkingBlockModel(dynBlockPropValues));
+                                }
+                            }
+                            catch { }
+                            if (br.Layer == Variables.parkingBuildingsLayer && br != null)
+                            {
+                                var pc = br.DynamicBlockReferencePropertyCollection;
+                                var plotNumbner = borders.Where(x => x.Name == pc[1].Value.ToString()).First().PlotNumber;
+                                for (var i = 8; i < 22; i += 2)
+                                {
+                                    if (Convert.ToInt32(pc[i + 1].Value) != 0)
+                                    {
+                                        output.Add(new ParkingBlockModel(Convert.ToInt32(pc[i + 1].Value), pc[i].Value.ToString(), plotNumbner));
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+            tr.Commit();
         }
         return output;
     }
-    internal static void CreateParkingTableWithData(CityModel city)
+    internal static void CreateParkingTableWithData(CityModel city, string plotsXref, bool plotsAll, string zonesXref, bool zonesAll, string parkingXref, bool parkingAll)
     {
-        var plotBorders = GetPlotBorders();
-        var zoneBorders = GetZoneBorders();
+        var plotBorders = GetPlotBorders(plotsXref, plotsAll);
+        var zoneBorders = GetZoneBorders(zonesXref, zonesAll);
         AddPlotNumbersToZones(ref zoneBorders, plotBorders);
-        var parkingBlocks = GetExParkingBlocks(zoneBorders[0]);
+        DataExport.SetPlotNumbersInBlocks(plotBorders, parkingXref, parkingAll);
+        var parkingBlocks = GetExParkingBlocks(zoneBorders[0], parkingXref, parkingAll);
         var buildingNames = zoneBorders[0].OrderBy(x => x.Name).Select(x => x.Name).ToList();
         var plotNumbers = plotBorders.Select(x => x.PlotNumber).ToList();
         var buildingPlotNumbers = zoneBorders[0].OrderBy(x => x.Name).Select(x => x.PlotNumber).ToList();
@@ -177,7 +203,7 @@ internal static class DataProcessing
         //Getting parking buildings
         var parkingBuildings = DataImport.GetParkingBuildings(city, zoneBorders[0], exParking);
         //Creating lines for table
-        List<string[]> parkTableList = new List<string[]>();
+        List<string[]> parkTableList = new();
         foreach (var item in plotNumbers)
         {
             var test = parkingBuildings.Where(x => x.PlotNumber == item).ToList();
@@ -327,7 +353,7 @@ internal static class DataProcessing
     }
     private static List<ParkingModel> GetExParking(List<ParkingBlockModel> blocks)
     {
-        List<ParkingModel> output = new List<ParkingModel>();
+        List<ParkingModel> output = new();
         var buildingNames = blocks.Select(x => x.ParkingIsForBuildingName).Distinct().OrderBy(x => x).ToArray();
         List<List<ParkingBlockModel>> sortedBlocks = new();
         for (int i = 0; i < buildingNames.Length; i++)

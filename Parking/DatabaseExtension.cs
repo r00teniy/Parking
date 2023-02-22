@@ -16,7 +16,7 @@ namespace Autodesk.AutoCAD.DatabaseServices
         /// <returns>A strongly typed dictionary containing the entries.</returns>
         public static Dictionary<string, string> GetCustomProperties(this Database db)
         {
-            Dictionary<string, string> result = new Dictionary<string, string>();
+            Dictionary<string, string> result = new();
             IDictionaryEnumerator dictEnum = db.SummaryInfo.CustomProperties;
             while (dictEnum.MoveNext())
             {
@@ -34,7 +34,7 @@ namespace Autodesk.AutoCAD.DatabaseServices
         /// <returns>The property value or null if not found</returns>
         public static string GetCustomProperty(this Database db, string key)
         {
-            DatabaseSummaryInfoBuilder sumInfo = new DatabaseSummaryInfoBuilder(db.SummaryInfo);
+            DatabaseSummaryInfoBuilder sumInfo = new(db.SummaryInfo);
             IDictionary custProps = sumInfo.CustomPropertyTable;
             return (string)custProps[key];
         }
@@ -47,7 +47,7 @@ namespace Autodesk.AutoCAD.DatabaseServices
         /// <param name="value">Property value.</param>
         public static void SetCustomProperty(this Database db, string key, string value)
         {
-            DatabaseSummaryInfoBuilder infoBuilder = new DatabaseSummaryInfoBuilder(db.SummaryInfo);
+            DatabaseSummaryInfoBuilder infoBuilder = new(db.SummaryInfo);
             IDictionary custProps = infoBuilder.CustomPropertyTable;
             if (custProps.Contains(key))
                 custProps[key] = value;
