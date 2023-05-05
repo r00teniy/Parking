@@ -22,20 +22,14 @@ namespace Parking.Forms
             InitializeComponent();
 
             selectedParkingBlocksXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
-            //selectedParkingBlocksXrefBox.DisplayMemberPath = "Name";
-            //selectedParkingBlocksXrefBox.SelectedIndex = 0;
             selectedPlotsXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
-            //selectedPlotsXrefBox.DisplayMemberPath = "Name";
-            //selectedPlotsXrefBox.SelectedIndex = 0;
             selectedZonesXrefBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = xRefs });
-            //selectedZonesXrefBox.DisplayMemberPath = "Name";
-            //selectedZonesXrefBox.SelectedIndex = 0;
 
             parkingBlockSearchTypeBox.ItemsSource = Variables.whereToFind;
             zonesBlockSearchTypeBox.ItemsSource = Variables.whereToFind;
             plotBlockSearchTypeBox.ItemsSource = Variables.whereToFind;
-            parkingBlockSearchTypeBox.SelectedIndex = 0;
-            zonesBlockSearchTypeBox.SelectedIndex = 0;
+            parkingBlockSearchTypeBox.SelectedIndex = 2;
+            zonesBlockSearchTypeBox.SelectedIndex = 2;
             plotBlockSearchTypeBox.SelectedIndex = 0;
 
             cityBox.SetBinding(ItemsControl.ItemsSourceProperty, new Binding() { Source = Variables.cityList });
@@ -103,6 +97,7 @@ namespace Parking.Forms
                 if (xRefs.Count != 0)
                 {
                     selectedZonesXrefBox.IsEnabled = true;
+                    selectedZonesXrefBox.SelectedIndex = selectedZonesXrefBox.SelectedIndex == -1 ? 0 : selectedZonesXrefBox.SelectedIndex;
                 }
                 else
                 {
@@ -122,6 +117,7 @@ namespace Parking.Forms
                 if (xRefs.Count != 0)
                 {
                     selectedPlotsXrefBox.IsEnabled = true;
+                    selectedPlotsXrefBox.SelectedIndex = selectedPlotsXrefBox.SelectedIndex == -1 ? 0 : selectedPlotsXrefBox.SelectedIndex;
                 }
                 else
                 {
@@ -138,7 +134,7 @@ namespace Parking.Forms
         {
             Hide();
             var selectedCity = (CityModel)cityBox.SelectedItem;
-            DataProcessing.CreateParkingTableWithData(selectedCity, plotBlockSearchTypeBox.SelectedIndex == 1 ? selectedPlotsXrefBox.Text : null, plotBlockSearchTypeBox.SelectedIndex == 2, zonesBlockSearchTypeBox.SelectedIndex == 1 ? selectedZonesXrefBox.Text : null, zonesBlockSearchTypeBox.SelectedIndex == 2, parkingBlockSearchTypeBox.SelectedIndex == 1 ? selectedParkingBlocksXrefBox.Text : null, parkingBlockSearchTypeBox.SelectedIndex == 2);
+            DataProcessing.CreateParkingTableWithData(selectedCity, plotBlockSearchTypeBox.SelectedIndex == 1 ? selectedPlotsXrefBox.Text : null, plotBlockSearchTypeBox.SelectedIndex == 2, zonesBlockSearchTypeBox.SelectedIndex == 1 ? selectedZonesXrefBox.Text : null, zonesBlockSearchTypeBox.SelectedIndex == 2, parkingBlockSearchTypeBox.SelectedIndex == 1 ? selectedParkingBlocksXrefBox.Text : null, parkingBlockSearchTypeBox.SelectedIndex == 2, (bool)useOldTableCheckBox.IsChecked);
             SettingsStorage.SaveCity(selectedCity.Name);
             Show();
         }

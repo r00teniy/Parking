@@ -8,8 +8,8 @@ namespace Parking
 {
     internal class MyCommands
     {
-        [CommandMethod("ParkNew")]
-        static public void ParkNew()
+        [CommandMethod("CalculateParking")]
+        static public void CalculateParking()
         {
             MainWindow mainWindow = new();
             mainWindow.Show();

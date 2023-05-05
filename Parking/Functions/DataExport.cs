@@ -6,6 +6,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Colors;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
 
 using Parking.Models;
 
@@ -131,7 +132,7 @@ internal class DataExport
         return false;
     }
     //Function that generates auotcad table, requires list of rows (string array)
-    internal static void CreateTable(List<string[]> list, List<string> buildingNames, List<ParkingModel> parkingReq, int[] onPlot)
+    internal static void CreateTable(List<string[]> list, List<string> buildingNames, List<ParkingModel> parkingReq, int[] onPlot, bool replaceExistingTable)
     {
         Document doc = Application.DocumentManager.MdiActiveDocument;
         Editor ed = doc.Editor;
@@ -168,11 +169,36 @@ internal class DataExport
                     ex[i] = list.Sum(x => Convert.ToInt32(x[i])).ToString();
                 }
                 req[list[0].Length - 1] = parkingReq.Sum(x => x.TotalLongParking + x.TotalShortParking + x.TotalGuestParking).ToString();
+                //Getting insertion point from existing table
+                Point3d insPoint;
+                if (replaceExistingTable)
+                {
+                    var options = new PromptEntityOptions("\nВыберите таблицу: ");
+                    options.SetRejectMessage("\nВыбранный объект не является таблицей.");
+                    options.AddAllowedClass(typeof(Table), true);
+                    var result = ed.GetEntity(options);
+                    if (result.Status == PromptStatus.OK)
+                    {
+                        var table = (Table)tr.GetObject(result.ObjectId, OpenMode.ForWrite);
+                        insPoint = table.Position;
+                        table.Erase();
+                    }
+                    else
+                    {
+                        System.Windows.MessageBox.Show("Таблица не выбрана", "Error", System.Windows.MessageBoxButton.OK);
+                        return;
+                    }
+
+                }
+                else
+                {
+                    insPoint = DataImport.GetInsertionPoint();
+                }
                 //Creating table
                 Table tb = new()
                 {
                     TableStyle = tbSt,
-                    Position = DataImport.GetInsertionPoint()
+                    Position = insPoint
                 };
                 //Creating title
                 tb.Rows[0].Style = "Название";

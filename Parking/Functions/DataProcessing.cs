@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Windows;
 
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.BoundaryRepresentation;
@@ -78,7 +79,6 @@ internal static class DataProcessing
                 output.Add(new PlotBorderModel(border.Layer.Replace(Variables.plotsBorderLayer, ""), border));
             }
         }
-
         return output;
     }
 
@@ -86,7 +86,7 @@ internal static class DataProcessing
     public static List<ParkingBlockModel> GetExParkingBlocks(List<ZoneBorderModel> borders, string xRefName, bool everywhere)
     {
         List<ParkingBlockModel> output = new();
-        Document doc = Application.DocumentManager.MdiActiveDocument;
+        Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         Editor ed = doc.Editor;
 
@@ -137,46 +137,52 @@ internal static class DataProcessing
                             var br = tr.GetObject(objectId, OpenMode.ForRead) as BlockReference;
                             if (br.AttributeCollection.Count == 4)
                             {
-
-                            }
-                            try
-                            {
-                                ObjectId oi = br.AttributeCollection[1];
-                                var attRef = tr.GetObject(oi, OpenMode.ForRead) as AttributeReference;
-                                ObjectId oi2 = br.AttributeCollection[0];
-                                var attRef2 = tr.GetObject(oi2, OpenMode.ForRead) as AttributeReference;
-                                ObjectId oi3 = br.AttributeCollection[3];
-                                var attRef3 = tr.GetObject(oi3, OpenMode.ForRead) as AttributeReference;
-
-                                if (attRef.Tag == "Этап" && attRef2.Tag == "КОЛ-ВО")
+                                try
                                 {
-                                    string[] dynBlockPropValues = new string[7];
-                                    var pc = br.DynamicBlockReferencePropertyCollection;
-                                    for (var j = 0; j < pc.Count; j++)
+                                    ObjectId oi = br.AttributeCollection[1];
+                                    var attRef = tr.GetObject(oi, OpenMode.ForRead) as AttributeReference;
+                                    ObjectId oi2 = br.AttributeCollection[0];
+                                    var attRef2 = tr.GetObject(oi2, OpenMode.ForRead) as AttributeReference;
+                                    ObjectId oi3 = br.AttributeCollection[3];
+                                    var attRef3 = tr.GetObject(oi3, OpenMode.ForRead) as AttributeReference;
+
+                                    if (attRef.Tag == "Этап" && attRef2.Tag == "КОЛ-ВО")
                                     {
-                                        for (int i = 0; i < Variables.parkingBlockPararmArray.Length; i++)
+                                        string[] dynBlockPropValues = new string[7];
+                                        var pc = br.DynamicBlockReferencePropertyCollection;
+                                        for (var j = 0; j < pc.Count; j++)
                                         {
-                                            if (pc[j].PropertyName == Variables.parkingBlockPararmArray[i])
-                                            { dynBlockPropValues[i] = pc[j].Value.ToString(); }
+                                            for (int i = 0; i < Variables.parkingBlockPararmArray.Length; i++)
+                                            {
+                                                if (pc[j].PropertyName == Variables.parkingBlockPararmArray[i])
+                                                { dynBlockPropValues[i] = pc[j].Value.ToString(); }
+                                            }
                                         }
+                                        dynBlockPropValues[4] = attRef.TextString;
+                                        dynBlockPropValues[5] = attRef2.TextString;
+                                        dynBlockPropValues[6] = attRef3.TextString;
+                                        output.Add(new ParkingBlockModel(dynBlockPropValues));
                                     }
-                                    dynBlockPropValues[4] = attRef.TextString;
-                                    dynBlockPropValues[5] = attRef2.TextString;
-                                    dynBlockPropValues[6] = attRef3.TextString;
-                                    output.Add(new ParkingBlockModel(dynBlockPropValues));
                                 }
+                                catch { }
                             }
-                            catch { }
                             if (br.Layer == Variables.parkingBuildingsLayer && br != null)
                             {
                                 var pc = br.DynamicBlockReferencePropertyCollection;
-                                var plotNumbner = borders.Where(x => x.Name == pc[1].Value.ToString()).First().PlotNumber;
-                                for (var i = 8; i < 22; i += 2)
+                                try
                                 {
-                                    if (Convert.ToInt32(pc[i + 1].Value) != 0)
+                                    var plotNumbner = borders.Where(x => x.Name == pc[1].Value.ToString()).First().PlotNumber;
+                                    for (var i = 8; i < 22; i += 2)
                                     {
-                                        output.Add(new ParkingBlockModel(Convert.ToInt32(pc[i + 1].Value), pc[i].Value.ToString(), plotNumbner));
+                                        if (Convert.ToInt32(pc[i + 1].Value) != 0)
+                                        {
+                                            output.Add(new ParkingBlockModel(Convert.ToInt32(pc[i + 1].Value), pc[i].Value.ToString(), plotNumbner));
+                                        }
                                     }
+                                }
+                                catch
+                                {
+                                    MessageBox.Show("Блок на слое паркингов не находится на участке или для его номера отсутствует граница благоустройства");
                                 }
                             }
                         }
@@ -187,11 +193,28 @@ internal static class DataProcessing
         }
         return output;
     }
-    internal static void CreateParkingTableWithData(CityModel city, string plotsXref, bool plotsAll, string zonesXref, bool zonesAll, string parkingXref, bool parkingAll)
+    internal static void CreateParkingTableWithData(CityModel city, string plotsXref, bool plotsAll, string zonesXref, bool zonesAll, string parkingXref, bool parkingAll, bool usingExisting)
     {
         var plotBorders = GetPlotBorders(plotsXref, plotsAll);
+        if (plotBorders.Count == 0)
+        {
+            MessageBox.Show("Не найдено границ участка");
+            return;
+        }
         var zoneBorders = GetZoneBorders(zonesXref, zonesAll);
+        if (zoneBorders.Count == 0)
+        {
+            MessageBox.Show("Не найдено границ благоустройства позиций");
+            return;
+        }
         AddPlotNumbersToZones(ref zoneBorders, plotBorders);
+
+        var houseNumbers = zoneBorders[0].Where(x => x.PlotNumber == null).Select(x => x.Name).ToArray();
+        if (houseNumbers.Length != 0)
+        {
+            MessageBox.Show($"Не для всех границ благоустройства найдены участки. Проверьте границы домов {String.Join(",", houseNumbers)}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
         DataExport.SetPlotNumbersInBlocks(plotBorders, parkingXref, parkingAll);
         var parkingBlocks = GetExParkingBlocks(zoneBorders[0], parkingXref, parkingAll);
         var buildingNames = zoneBorders[0].OrderBy(x => x.Name).Select(x => x.Name).ToList();
@@ -229,7 +252,7 @@ internal static class DataProcessing
         //Getting total existing parkings on plot of each building.
         var exParkingOnPlot = GetExParkingOnBuildingPlot(parkingBlocks, buildingNames, buildingPlotNumbers);
         //Creating table in autocad
-        DataExport.CreateTable(parkTableList, buildingNames, parkReqForTable, exParkingOnPlot);
+        DataExport.CreateTable(parkTableList, buildingNames, parkReqForTable, exParkingOnPlot, usingExisting);
     }
     public static string[] CreateLineForParkingTable(List<ParkingBlockModel> parkingBlocks, List<string> names, string plotNumber, List<ZoneBorderModel> borders = null, bool isParkingBuilding = false, ParkingBuildingModel parBuild = null)
     {
@@ -345,6 +368,14 @@ internal static class DataProcessing
     //Calculating formula passed as string
     internal static double CalculateSimpleFormula(string formula)
     {
+        //Check if we removed all text from formula
+        Regex checkForLetters = new Regex(@"а-я", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        var err = checkForLetters.Match(formula).ToString();
+        if (err != "")
+        {
+            MessageBox.Show($"Ошибка в формуле {err}", "Error");
+            return 0;
+        }
         System.Data.DataTable table = new();
         table.Columns.Add("myExpression", string.Empty.GetType(), formula);
         DataRow row = table.NewRow();
