@@ -11,28 +11,30 @@ internal class ModelCreation
 {
     private DataImport _dataImport;
     private Variables _variables;
+    private DataProcessing _dataProcessing;
     public ModelCreation(Variables variables)
     {
         _dataImport = new DataImport();
+        _dataProcessing = new DataProcessing(variables);
         _variables = variables;
     }
 
-    public ConstructionPlotModel GenerateModelsFromAutocad()
+    public ConstructionPlotModel GenerateModelsFromAutocad(Transaction tr)
     {
         //Getting plot border as polyline
-        List<Polyline> plotBorders = _dataImport.GetAllElementsOfTypeOnLayer<Polyline>(_variables.plotBorderLayer);
+        List<Polyline> plotBorders = _dataImport.GetAllElementsOfTypeOnLayer<Polyline>(tr, _variables.plotBorderLayer);
 
         //Creating Models
-        var curbModels = GetCurbs(plotBorders);
+        var curbModels = GetCurbs(tr, plotBorders);
         var pavementModels = GetPavements(plotBorders);
-        var greeneryItemModels = GetGreeneryItems(plotBorders);
-        var greeneryAreaModels = GetGreeneryAreas(plotBorders);
-        var streetFurnitureModels = GetStreetFurniture();
+        var greeneryItemModels = GetGreeneryItems(tr, plotBorders);
+        var greeneryAreaModels = GetGreeneryAreas(tr, plotBorders);
+        var streetFurnitureModels = GetStreetFurniture(tr);
 
         return new ConstructionPlotModel(pavementModels, greeneryItemModels, greeneryAreaModels, streetFurnitureModels, curbModels, plotBorders.Sum(x => x.Area), 0);
     }
 
-    internal List<StreetFurnitureModel> GetStreetFurniture()
+    internal List<StreetFurnitureModel> GetStreetFurniture(Transaction tr)
     {
         //Getting layer lists from drawing
         List<string> streetFurnitureLayers = _dataImport.GetAllLayersContainingString(_variables.streetFurnitureLayerStart);
@@ -40,13 +42,13 @@ internal class ModelCreation
         List<List<BlockReference>> streetFurniture = new();
         foreach (var streetFurnitureLayer in streetFurnitureLayers)
         {
-            streetFurniture.Add(_dataImport.GetAllElementsOfTypeOnLayer<BlockReference>(streetFurnitureLayer));
+            streetFurniture.Add(_dataImport.GetAllElementsOfTypeOnLayer<BlockReference>(tr, streetFurnitureLayer));
         }
         //Creating models
         List<StreetFurnitureModel> streetFurnitureModels = new();
         foreach (var furn in streetFurniture)
         {
-            var attr = _dataImport.GetAllAttributesFromBlockReferences(furn);
+            var attr = _dataImport.GetAllAttributesFromBlockReferences(tr, furn);
             for (var i = 0; i < furn.Count; i++)
             {
                 streetFurnitureModels.Add(new StreetFurnitureModel(attr[i], furn[i].Position));
@@ -55,7 +57,7 @@ internal class ModelCreation
         return streetFurnitureModels;
     }
 
-    internal List<CurbModel> GetCurbs(List<Polyline> plotBorders)
+    internal List<CurbModel> GetCurbs(Transaction tr, Polyline plotBorder)
     {
         //Getting layer lists from drawing
         List<string> curbLayers = _dataImport.GetAllLayersContainingString(_variables.curbLayerStart);
@@ -63,13 +65,13 @@ internal class ModelCreation
         List<List<Polyline>> curbs = new();
         foreach (var curbLayer in curbLayers)
         {
-            curbs.Add(_dataImport.GetAllElementsOfTypeOnLayer<Polyline>(curbLayer));
+            curbs.Add(_dataImport.GetAllElementsOfTypeOnLayer<Polyline>(tr, curbLayer));
         }
         //Checking if curbs are inside plot or not
         List<List<bool>> areCurbsInsidePlot = new();
         foreach (var curbList in curbs)
         {
-            areCurbsInsidePlot.Add(FunctionsPrepairingData.AreObjectsInsidePlot(plotBorders, curbList));
+            areCurbsInsidePlot.Add(_dataProcessing.AreObjectsInsidePlot(plotBorder, curbList));
         }
         //Creating new models for each element
         List<CurbModel> curbModels = new();
@@ -82,7 +84,7 @@ internal class ModelCreation
         }
         return curbModels;
     }
-    internal List<IPavement> GetPavements(List<Polyline> plotBorders)
+    internal List<IPavement> GetPavements(Transaction tr, List<Polyline> plotBorders)
     {
         //Getting layers
         List<string> pavementLayers = _dataImport.GetAllLayersContainingString(_variables.pavementLayerStart);
@@ -90,15 +92,15 @@ internal class ModelCreation
         List<List<Hatch>> pavements = new();
         foreach (var pavementLayer in pavementLayers)
         {
-            pavements.Add(_dataImport.GetAllElementsOfTypeOnLayer<Hatch>(pavementLayer));
+            pavements.Add(_dataImport.GetAllElementsOfTypeOnLayer<Hatch>(tr, pavementLayer));
         }
         //Creating models
         List<IPavement> pavementModels = new();
         for (int i = 0; i < pavementLayers.Count; i++)
         {
             var layerSplit = pavementLayers[i].Split('+');
-            var arePavementsInsidePlot = FunctionsPrepairingData.AreObjectsInsidePlot(plotBorders, pavements[i]);
-            var pavementAreas = FunctionsPrepairingData.GetHatchArea(pavements[i]);
+            var arePavementsInsidePlot = _dataProcessing.AreObjectsInsidePlot(plotBorders, pavements[i]);
+            var pavementAreas = _dataProcessing.GetHatchArea(pavements[i]);
             var pavementPositions = _dataImport.GetCenterOfAHatch(pavements[i]);
             switch (Array.IndexOf(_variables.typeOfPavement, layerSplit[2]))
             {
@@ -159,7 +161,7 @@ internal class ModelCreation
         List<List<bool>> areGreeneryItemsInsidePlot = new();
         foreach (var greeneryList in greeneryItems)
         {
-            areGreeneryItemsInsidePlot.Add(FunctionsPrepairingData.AreObjectsInsidePlot(plotBorders, greeneryList));
+            areGreeneryItemsInsidePlot.Add(_dataProcessing.AreObjectsInsidePlot(plotBorders, greeneryList));
         }
         //Creating Greenery Models
         List<IGreeneryItem> greeneryModels = new();
@@ -207,14 +209,14 @@ internal class ModelCreation
         List<List<bool>> areGreeneryAreasInsidePlot = new();
         foreach (var greeneryList in greeneryAreas)
         {
-            areGreeneryAreasInsidePlot.Add(FunctionsPrepairingData.AreObjectsInsidePlot(plotBorders, greeneryList));
+            areGreeneryAreasInsidePlot.Add(_dataProcessing.AreObjectsInsidePlot(plotBorders, greeneryList));
         }
         //Creating Greenery Models
         List<IGreeneryArea> greeneryModels = new();
         for (int i = 0; i < greeneryAreaLayers.Count; i++)
         {
             var layerSplit = greeneryAreaLayers[i].Split('+');
-            var hatchAreas = FunctionsPrepairingData.GetHatchArea(greeneryAreas[i]);
+            var hatchAreas = _dataProcessing.GetHatchArea(greeneryAreas[i]);
             var hatchPositions = _dataImport.GetCenterOfAHatch(greeneryAreas[i]);
             switch (Array.IndexOf(_variables.typeOfAreaGreenery, layerSplit[3]))
             {

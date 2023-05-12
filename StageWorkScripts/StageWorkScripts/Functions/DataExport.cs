@@ -10,6 +10,12 @@ using Autodesk.AutoCAD.Geometry;
 namespace StageWorkScripts.Functions;
 internal class DataExport
 {
+    private Variables _variables;
+    public DataExport(Variables variables)
+    {
+        _variables = variables;
+    }
+
     /*internal static void CreateTempCircleOnPoint(Variables variables, Transaction tr, List<Point3d> pts)
     {
         //temporary solution
@@ -19,13 +25,13 @@ internal class DataExport
         BlockTableRecord btr = (BlockTableRecord)tr.GetObject(bT[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
         foreach (var pt in pts)
         {
-            LayerCheck(tr, variables.TempLayer, Color.FromColorIndex(ColorMethod.ByAci, variables.TempLayerColor), variables.TempLayerLineWeight, variables.TempLayerPrintable);
+            LayerCheck(tr, _variables.TempLayer, Color.FromColorIndex(ColorMethod.ByAci, _variables.TempLayerColor), _variables.TempLayerLineWeight, _variables.TempLayerPrintable);
             using (Circle acCirc = new Circle())
             {
                 acCirc.Center = pt;
                 acCirc.Radius = 2;
-                acCirc.Color = Color.FromColorIndex(ColorMethod.ByAci, variables.TempLayerColor);
-                acCirc.Layer = variables.TempLayer;
+                acCirc.Color = Color.FromColorIndex(ColorMethod.ByAci, _variables.TempLayerColor);
+                acCirc.Layer = _variables.TempLayer;
                 // Add the new object to the block table record and the transaction
                 btr.AppendEntity(acCirc);
                 tr.AddNewlyCreatedDBObject(acCirc, true);
@@ -40,6 +46,7 @@ internal class DataExport
     }
     public void CreateAutocadTable(string title, List<string[]> data, double[] collumnWidth)
     {
+        DataImport _dataImport = new DataImport();
         Document doc = Application.DocumentManager.MdiActiveDocument;
         Database db = doc.Database;
         using (Transaction tr = db.TransactionManager.StartTransaction())
@@ -53,14 +60,14 @@ internal class DataExport
                 foreach (DBDictionaryEntry entry in tsd)
                 {
                     var tStyle = (TableStyle)tr.GetObject(entry.Value, OpenMode.ForRead);
-                    if (tStyle.Name == Variables.tableStyleName)
+                    if (tStyle.Name == _variables.tableStyleName)
                     { tbSt = entry.Value; }
                 }
                 //Creating table
                 Table tb = new()
                 {
                     TableStyle = tbSt,
-                    Position = DataImport.GetInsertionPoint("расположения таблицы")
+                    Position = _dataImport.GetInsertionPoint("расположения таблицы")
                 };
                 //Creating title
                 tb.Rows[0].Style = "Название";
@@ -180,7 +187,7 @@ internal class DataExport
                 foreach (ObjectId objectId in btr)
                 {
                     var obj = tr.GetObject(objectId, OpenMode.ForWrite, false, true) as Entity;
-                    if (obj.Layer == variables.TempLayer) // Checking for temporary layer
+                    if (obj.Layer == _variables.TempLayer) // Checking for temporary layer
                     {
                         obj.Erase();
                     }
